@@ -13,7 +13,7 @@ RUN npm install
 RUN npm run build
 
 # Expose the application port
-EXPOSE 3001
+EXPOSE 3000
 
 # Run application when the container starts
 CMD ["npm", "start"]
