@@ -1,51 +1,97 @@
 pipeline {
     agent any
     environment {
-        DOCKER_FILE = "Dockerfile"
         IMAGE = "mengsoklay/nextjs"
-        TAG = "0.0.0"
-        VERSION = "${env.Build_ID}"
+        DOCKER_IMAGE = "${IMAGE}:${BUILD_NUMBER}"
+        DOCKER_HUB_CREDENTIAL = "dockerhub-token"
+        MANIFEST_REPO = "manifest-repo"
+        GIT_MANIFEST_REPO = "https://github.com/soklaymeng/next-manifest.git"
+        GIT_CREDENTIALS_ID = "git-token"
+        MANIFEST_FILE_PATH = "mainifest/deployment.yaml"
     }
     stages {
-        stage("Build Image") {
+
+        stage("cleanup") {
+            steps {
+                // sh " mvn clean install"
+                // sh " docker image prune -a "
+                echo "hello"
+            }
+        }
+
+        stage ("build") {
+            steps {
+                echo "Hello world !!"
+                sh " docker build -t ${DOCKER_IMAGE} ."
+                sh " docker images | grep -i ${IMAGE} "
+            }
+        }
+
+        stage ("push image to docker hub") {
             steps {
                 script {
-                    echo "Build nextjs image."
-                    sh "docker build -t ${IMAGE}:${TAG}.${VERSION} ."
+                     withCredentials([usernamePassword(credentialsId: DOCKER_HUB_CREDENTIAL, passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
+                      sh 'echo "${DOCKER_PASS} ${DOCKER_USER}" '
+                      sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    }
+                    echo "🚀 Pushing the image to Docker hub"
+                    sh 'docker push ${DOCKER_IMAGE}'
+                }
+               
+            }
+        }
+
+        stage ("clone manifest file") {
+             steps {
+                    sh "pwd"
+                    sh "ls -l"
+                    sh '''
+                    if [ -d "${MANIFEST_REPO}" ]; then
+                        echo "🚀 ${MANIFEST_REPO} exists, removing it..."
+                        rm -rf ${MANIFEST_REPO}
+                    fi
+                    '''
+                    echo "🚀 Updating the image of the Manifest file..."
+                    sh "git clone -b main ${GIT_MANIFEST_REPO} ${MANIFEST_REPO}"
+                    sh "ls -l"
+             }
+        }
+        
+        stage("Updating the manifest file") {
+            steps {
+                script {
+                    echo "🚀 Update the image in the deployment manifest..."
+                    sh """
+                    sed -i 's|image: mengsoklay/nextjs.*|image: ${DOCKER_IMAGE}|' ${MANIFEST_REPO}/${MANIFEST_FILE_PATH}
+                    """
                 }
             }
         }
-        stage("Push image to registry (Docker Hub)") {
-            when {
-                expression { currentBuild.currentResult == 'SUCCESS' } 
-            }
+
+         stage("push changes to the manifest") {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub-token', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
-                        echo "Login Docker Hub"
-                        sh "docker login -u $USERNAME -p $PASSWORD"
-                        sh "docker push ${IMAGE}:${TAG}.${VERSION}"
+                    dir("${MANIFEST_REPO}") {
+                        withCredentials([usernamePassword(credentialsId: 'git-token', passwordVariable: 'GIT_PASS', usernameVariable: 'GIT_USER')]) {
+                            sh """
+                            git config --global user.name "soklaymeng"
+                            git config --global user.email "mengsoklay2222@gmail.com"
+                            echo "🚀 Checking..."
+                            git branch
+                            ls -l 
+                            pwd 
+                            echo "🚀 Start pushing to manifest repo"
+                            git add ${MANIFEST_FILE_PATH}
+                            git commit -m "update images to ${DOCKER_IMAGE}"
+                            git push https://${GIT_USER}:${GIT_PASS}@github.com/soklaymeng/next-manifest.git
+                            """
+                        }
                     }
                 }
             }
         }
-        stage("Update to image in the kubernetes manifest file to latest images") {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'git-token', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
-                        git credentialsId: 'git-token', url: 'https://github.com/soklaymeng/deployment_next.git'
-                        echo "Update Image Tag"
-          
-                        echo "Git Config for pushing latest update."
-                        sh "git config --global user.email 'mengsoklay2222@gmail.com'"
-                        sh "git config --global user.name 'soklaymeng'"
-                        sh "git commit -am 'Update image tag'"
-                        echo "User name: $USERNAME"
-                        echo "User password: $PASSWORD"
-                        sh "git push https://${USERNAME}:${PASSWORD}@github.com/soklaymeng/deployment_next"
-                    }
-                }
-            }
-        }
+
+        
+        
     }
 }
