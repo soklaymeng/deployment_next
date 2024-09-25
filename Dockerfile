@@ -1,6 +1,20 @@
-FORM node:18
+# Use official Node.js image from the Docker Hub
+FROM node:18
+
+# Set the working directory inside the container
 WORKDIR /app
+
+# Copy only package.json and package-lock.json (if present) to optimize layer caching
 COPY package*.json ./
-RUN npm install
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy the rest of the application code to the container
 COPY . .
-CMD npm run dev
+
+# Expose the port that your application will run on
+EXPOSE 3000
+
+# Start the application
+CMD ["npm", "run", "dev"]
