@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    tool {
+        nodejs 'nodejs'
+    }
     environment {
         IMAGE = "mengsoklay/nextjs"
         DOCKER_IMAGE = "${IMAGE}:${BUILD_NUMBER}"
