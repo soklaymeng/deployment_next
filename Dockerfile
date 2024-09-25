@@ -1,7 +1,5 @@
 # Use official Node.js image from the Docker Hub
 FROM node:18
-
-# Set the working directory inside the container
 WORKDIR /app
 
 # Copy only package.json and package-lock.json (if present) to optimize layer caching
