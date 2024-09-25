@@ -60,39 +60,39 @@ pipeline {
              }
         }
         
-        // stage("Updating the manifest file") {
-        //     steps {
-        //         script {
-        //             echo "🚀 Update the image in the deployment manifest..."
-        //             sh """
-        //             sed -i 's|image: mengsoklay/nextjs.*|image: ${DOCKER_IMAGE}|' ${MANIFEST_REPO}/${MANIFEST_FILE_PATH}
-        //             """
-        //         }
-        //     }
-        // }
+        stage("Updating the manifest file") {
+            steps {
+                script {
+                    echo "🚀 Update the image in the deployment manifest..."
+                    sh """
+                    sed -i 's|image: mengsoklay/nextjs.*|image: ${DOCKER_IMAGE}|' ${MANIFEST_REPO}/${MANIFEST_FILE_PATH}
+                    """
+                }
+            }
+        }
 
-        //  stage("push changes to the manifest") {
-        //     steps {
-        //         script {
-        //             dir("${MANIFEST_REPO}") {
-        //                 withCredentials([usernamePassword(credentialsId: 'git-token', passwordVariable: 'GIT_PASS', usernameVariable: 'GIT_USER')]) {
-        //                     sh """
-        //                     git config --global user.name "soklaymeng"
-        //                     git config --global user.email "mengsoklay2222@gmail.com"
-        //                     echo "🚀 Checking..."
-        //                     git branch
-        //                     ls -l 
-        //                     pwd 
-        //                     echo "🚀 Start pushing to manifest repo"
-        //                     git add ${MANIFEST_FILE_PATH}
-        //                     git commit -m "update images to ${DOCKER_IMAGE}"
-        //                     git push https://${GIT_USER}:${GIT_PASS}@github.com/soklaymeng/next-manifest.git
-        //                     """
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
+         stage("push changes to the manifest") {
+            steps {
+                script {
+                    dir("${MANIFEST_REPO}") {
+                        withCredentials([usernamePassword(credentialsId: 'git-token', passwordVariable: 'GIT_PASS', usernameVariable: 'GIT_USER')]) {
+                            sh """
+                            git config --global user.name "soklaymeng"
+                            git config --global user.email "mengsoklay2222@gmail.com"
+                            echo "🚀 Checking..."
+                            git branch
+                            ls -l 
+                            pwd 
+                            echo "🚀 Start pushing to manifest repo"
+                            git add ${MANIFEST_FILE_PATH}
+                            git commit -m "update images to ${DOCKER_IMAGE}"
+                            git push https://${GIT_USER}:${GIT_PASS}@github.com/soklaymeng/next-manifest.git
+                            """
+                        }
+                    }
+                }
+            }
+        }
 
         
         
