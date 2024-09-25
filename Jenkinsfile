@@ -25,8 +25,8 @@ pipeline {
         stage ("build") {
             steps {
                 echo "Hello world !!"
-                sh " docker build -t ${DOCKER_IMAGE} ."
-                sh " docker images | grep -i ${IMAGE} "
+                // sh " docker build -t ${DOCKER_IMAGE} ."
+                // sh " docker images | grep -i ${IMAGE} "
             }
         }
 
