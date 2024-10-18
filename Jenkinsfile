@@ -1,101 +1,103 @@
 pipeline {
     agent any
-    tools {
-        nodejs 'nodejs'
-    }
+
     environment {
-        IMAGE = "mengsoklay/nextjs"
+        IMAGE = "soklay515/stacknote-ui"
         DOCKER_IMAGE = "${IMAGE}:${BUILD_NUMBER}"
         DOCKER_HUB_CREDENTIAL = "dockerhub-token"
-        MANIFEST_REPO = "manifest-repo"
-        GIT_MANIFEST_REPO = "https://github.com/soklaymeng/next-manifest.git"
-        GIT_CREDENTIALS_ID = "git-token"
-        MANIFEST_FILE_PATH = "mainifest/deployment.yaml"
+        MANIFEST_REPO = "stacknote-ui"
+        GIT_MANIFEST_REPO = "https://github.com/12-Generation-Advanced-Course-Project/Stacknote-Manifest.git"
+        GIT_CREDENTIALS_ID = "Stacknote"
+        MANIFEST_FILE_PATH = "manifest/deployment.yaml"
     }
+
     stages {
 
-        stage("cleanup") {
+        stage("Cleanup Workspace") {
             steps {
-                // sh " mvn clean install"
-                // sh " docker image prune -a "
-                echo "hello"
+                echo "Cleaning workspace..."
+                deleteDir() // Clean up workspace before proceeding
             }
         }
 
-        stage ("build") {
+        stage("Install Dependencies") {
             steps {
-                echo "Hello world !!"
-                sh " docker build -t ${DOCKER_IMAGE} ."
-                sh " docker images | grep -i ${IMAGE} "
+                echo "Installing npm dependencies..."
+                sh 'npm install'
             }
         }
 
-        stage ("push image to docker hub") {
+        stage("Build Docker Image") {
+            steps {
+                echo "Building Docker Image..."
+                sh "docker build -t ${DOCKER_IMAGE} ."
+                sh "docker images | grep -i ${IMAGE}"
+            }
+        }
+
+        stage("Push Image to Docker Hub") {
             steps {
                 script {
-                     withCredentials([usernamePassword(credentialsId: DOCKER_HUB_CREDENTIAL, passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
-                      sh 'echo "${DOCKER_PASS} ${DOCKER_USER}" '
-                      sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    withCredentials([usernamePassword(credentialsId: DOCKER_HUB_CREDENTIAL, passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
+                        sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
                     }
-                    echo "🚀 Pushing the image to Docker hub"
-                    sh 'docker push ${DOCKER_IMAGE}'
+                    echo "Pushing the image to Docker Hub..."
+                    sh "docker push ${DOCKER_IMAGE}"
                 }
-               
             }
         }
 
-        stage ("clone manifest file") {
-             steps {
-                    sh "pwd"
-                    sh "ls -l"
+        stage("Clone Manifest File") {
+            steps {
+                script {
+                    echo "Cloning manifest repo..."
                     sh '''
                     if [ -d "${MANIFEST_REPO}" ]; then
-                        echo "🚀 ${MANIFEST_REPO} exists, removing it..."
+                        echo "Removing existing manifest repo directory..."
                         rm -rf ${MANIFEST_REPO}
                     fi
+                    git clone -b main ${GIT_MANIFEST_REPO} ${MANIFEST_REPO}
                     '''
-                    echo "🚀 Updating the image of the Manifest file..."
-                    sh "git clone -b main ${GIT_MANIFEST_REPO} ${MANIFEST_REPO}"
-                    sh "ls -l"
-             }
+                }
+            }
         }
-        
-        stage("Updating the manifest file") {
+
+        stage("Update Manifest File") {
             steps {
                 script {
-                    echo "🚀 Update the image in the deployment manifest..."
+                    echo "Updating the image in the manifest file..."
                     sh """
-                    sed -i 's|image: mengsoklay/nextjs.*|image: ${DOCKER_IMAGE}|' ${MANIFEST_REPO}/${MANIFEST_FILE_PATH}
+                    sed -i 's|image: soklay515/stacknote-ui.*|image: ${DOCKER_IMAGE}|' ${MANIFEST_REPO}/${MANIFEST_FILE_PATH}
                     """
                 }
             }
         }
 
-         stage("push changes to the manifest") {
+        stage("Push Changes to Manifest Repo") {
             steps {
                 script {
                     dir("${MANIFEST_REPO}") {
-                        withCredentials([usernamePassword(credentialsId: 'git-token', passwordVariable: 'GIT_PASS', usernameVariable: 'GIT_USER')]) {
+                        withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASS', usernameVariable: 'GIT_USER')]) {
                             sh """
                             git config --global user.name "soklaymeng"
                             git config --global user.email "mengsoklay2222@gmail.com"
-                            echo "🚀 Checking..."
-                            git branch
-                            ls -l 
-                            pwd 
-                            echo "🚀 Start pushing to manifest repo"
                             git add ${MANIFEST_FILE_PATH}
-                            git commit -m "update images to ${DOCKER_IMAGE}"
-                            git push https://${GIT_USER}:${GIT_PASS}@github.com/soklaymeng/next-manifest.git
-                            echo "🚀 Already Pushed"
+                            git commit -m "Updated image to ${DOCKER_IMAGE}"
+                            git push https://${GIT_USER}:${GIT_PASS}@github.com/12-Generation-Advanced-Course-Project/Stacknote-Manifest.git
                             """
                         }
                     }
                 }
             }
         }
+    }
 
-        
-        
+    post {
+        success {
+            echo "Pipeline completed successfully!"
+        }
+        failure {
+            echo "Pipeline failed. Check the logs for errors."
+        }
     }
 }
